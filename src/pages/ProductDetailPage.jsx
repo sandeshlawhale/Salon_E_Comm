@@ -1,0 +1,220 @@
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import "./ProductDetailPage.css";
+import productsData from "../data/products.json";
+
+export default function ProductDetailPage() {
+  const { id } = useParams();
+
+  const [quantity, setQuantity] = useState(1);
+  const [selectedBulk, setSelectedBulk] = useState(null);
+  const [product, setProduct] = useState(null);
+
+  // Load product
+  useEffect(() => {
+    const productId = Number(id);
+    const foundProduct = productsData?.products?.find(
+      (p) => p.id === productId
+    );
+
+    if (foundProduct) {
+      setProduct({
+        ...foundProduct,
+        description:
+          foundProduct.description ||
+          `Premium ${foundProduct.name} for professional use`,
+        ingredients:
+          foundProduct.ingredients || [
+            "Premium ingredients",
+            "Professional grade",
+            "Long-lasting formula",
+          ],
+        technicalSpecs:
+          foundProduct.technicalSpecs || [
+            "Professional quality",
+            "High performance",
+            "Best in class",
+          ],
+        bulkOptions:
+          foundProduct.bulkOptions || [
+            {
+              units: "10 - 49 Units",
+              price: Math.floor(foundProduct.price * 0.95),
+              discount: "5% OFF",
+            },
+            {
+              units: "50 - 99 Units",
+              price: Math.floor(foundProduct.price * 0.85),
+              discount: "15% OFF",
+            },
+            {
+              units: "100+ Units",
+              price: Math.floor(foundProduct.price * 0.75),
+              discount: "Contact for Quote",
+            },
+          ],
+        reviews_data:
+          foundProduct.reviews_data || [
+            {
+              author: "Professional User",
+              title: "VERIFIED BUYER",
+              rating: 5,
+              date: new Date().toLocaleDateString(),
+              content:
+                "Excellent product quality and service. Highly recommended!",
+              verified: true,
+            },
+          ],
+      });
+    } else {
+      setProduct({
+        id: 0,
+        name: "Product Not Found",
+        category: "Unknown",
+        brand: "Unknown",
+        price: 0,
+        originalPrice: 0,
+        rating: 0,
+        reviews: 0,
+        badge: "N/A",
+        image: "https://via.placeholder.com/600x600?text=Product+Not+Found",
+        description: "The product you're looking for could not be found.",
+        ingredients: [],
+        technicalSpecs: [],
+        bulkOptions: [],
+        reviews_data: [],
+      });
+    }
+  }, [id]);
+
+  const handleAddToCart = () => {
+    alert(`Added ${quantity} × ${product.name} to cart`);
+  };
+
+  const handleBuyNow = () => {
+    alert(`Proceeding to checkout with ${quantity} item(s)`);
+  };
+
+  if (!product) {
+    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
+  }
+
+  return (
+    <div className="product-detail">
+      <div className="container">
+        {/* Breadcrumb */}
+        <div className="breadcrumb">
+          <span>Home</span> / <span>{product.category}</span> / <span>{product.name}</span>
+        </div>
+
+        {/* Main Product Section */}
+        <div className="product-main">
+          {/* Image Gallery */}
+          <div className="product-gallery">
+            <img src={product.image} alt={product.name} />
+          </div>
+
+          {/* Product Info */}
+          <div className="product-info">
+            <div className="badges">
+              <span className="badge">{product.badge}</span>
+              {product.category && <span className="badge">{product.category}</span>}
+            </div>
+
+            <h1>{product.name}</h1>
+
+            <div className="rating-section">
+              <span>{"★".repeat(Math.round(product.rating))}</span>
+              <span>({product.reviews} reviews)</span>
+            </div>
+
+            <div className="price-display">
+              <span className="price">₹{product.price}</span>
+              {product.originalPrice > 0 && (
+                <>
+                  <span className="original">₹{product.originalPrice}</span>
+                  <span className="discount">
+                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Quantity Selector */}
+            <div className="quantity-section">
+              <label>Quantity</label>
+              <div className="quantity-box">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>−</button>
+                <input type="number" value={quantity} readOnly />
+                <button onClick={() => setQuantity(quantity + 1)}>+</button>
+              </div>
+            </div>
+
+            {/* Bulk Purchase Options */}
+            <div className="bulk-section">
+              <h4>Bulk Purchase Tips</h4>
+              <div className="bulk-options">
+                {product.bulkOptions.map((option, idx) => (
+                  <div
+                    key={idx}
+                    className={`bulk-card ${selectedBulk === idx ? "selected" : ""}`}
+                    onClick={() => setSelectedBulk(idx)}
+                  >
+                    <h4>{option.units}</h4>
+                    <p>₹{option.price}</p>
+                    <small>{option.discount}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              <button onClick={handleAddToCart}>Add to Cart</button>
+              <button onClick={handleBuyNow}>Buy Now</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Details Section */}
+        <div className="details-section">
+          <h3>About the Product</h3>
+          <p>{product.description}</p>
+
+          <div className="specs-grid">
+            <div>
+              <h4>Ingredients</h4>
+              <ul>
+                {product.ingredients.map((ingredient, idx) => (
+                  <li key={idx}>{ingredient}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4>Technical Specs</h4>
+              <ul>
+                {product.technicalSpecs.map((spec, idx) => (
+                  <li key={idx}>{spec}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Reviews Section */}
+          <h3 style={{ marginTop: "40px" }}>Customer Reviews</h3>
+          <div className="reviews-list">
+            {product.reviews_data.map((review, idx) => (
+              <div key={idx} className="review-card">
+                <strong>{review.author}</strong>
+                <div>{"★".repeat(review.rating)}</div>
+                <p>{review.content}</p>
+                <small>{review.date}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
