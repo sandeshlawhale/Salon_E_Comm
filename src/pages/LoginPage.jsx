@@ -4,50 +4,79 @@ import { useAuth, ROLES } from '../context/AuthContext';
 import './LoginPage.css';
 
 export default function LoginPage() {
+  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [userType, setUserType] = useState('customer');
-  const { login } = useAuth();
+  const [error, setError] = useState('');
+
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (email && password) {
-      // Map UI userType to Context ROLES
-      let role = ROLES.USER;
-      if (userType === 'admin') role = ROLES.ADMIN;
-      else if (userType === 'agent') role = ROLES.AGENT;
+    setError('');
 
-      login(role);
+    // Map UI userType to Context ROLES
+    let role = ROLES.USER;
+    if (userType === 'admin') role = ROLES.ADMIN;
+    else if (userType === 'agent') role = ROLES.AGENT;
 
-      // Navigation is now handled by the login function updating state? 
-      // No, login() sets state, we still need to navigate.
-      // Or we can rely on ProtectedRoute to redirect if we came from there?
-      // But here we are explicit.
-
-      if (role === ROLES.ADMIN) {
-        navigate('/admin');
-      } else if (role === ROLES.AGENT) {
-        navigate('/agent-dashboard'); // App.jsx uses /agent-dashboard
+    if (isLogin) {
+      const success = login(email, password, role);
+      if (success) {
+        navigateAfterAuth(role);
       } else {
-        navigate('/dashboard'); // Go to User Dashboard instead of Home for consistency
+        setError('Invalid credentials. Try "test" as email prefix or Register new account.');
       }
     } else {
-      alert('Please fill all fields');
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+
+      const result = register({ email, password, name, role });
+      if (result.success) {
+        navigateAfterAuth(role);
+      } else {
+        setError(result.message);
+      }
     }
+  };
+
+  const navigateAfterAuth = (role) => {
+    if (role === ROLES.ADMIN) {
+      navigate('/admin');
+    } else if (role === ROLES.AGENT) {
+      navigate('/agent-dashboard');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setPassword('');
+    setConfirmPassword('');
+    setName('');
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>Welcome Back</h1>
-          <p>Sign in to your SalonPro account</p>
+          <h1>{isLogin ? 'Welcome Back' : 'Create Account'}</h1>
+          <p>{isLogin ? 'Sign in to your SalonPro account' : 'Join SalonPro today'}</p>
         </div>
 
-        <form onSubmit={handleLogin} className="login-form">
+        {error && <div className="error-message" style={{ color: 'red', textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
+
+        <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label>Login As</label>
+            <label>{isLogin ? 'Login As' : 'Register As'}</label>
             <div className="radio-group">
               <label className="radio-label">
                 <input
@@ -82,6 +111,19 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {!isLogin && (
+            <div className="form-group">
+              <label>Full Name</label>
+              <input
+                type="text"
+                placeholder="Enter your full name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
           <div className="form-group">
             <label>Email Address</label>
             <input
@@ -104,23 +146,45 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input type="checkbox" /> Remember me
-            </label>
-          </div>
+          {!isLogin && (
+            <div className="form-group">
+              <label>Confirm Password</label>
+              <input
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          )}
 
-          <button type="submit" className="btn-login-submit">Sign In</button>
+          {isLogin && (
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input type="checkbox" /> Remember me
+              </label>
+            </div>
+          )}
+
+          <button type="submit" className="btn-login-submit">
+            {isLogin ? 'Sign In' : 'Sign Up'}
+          </button>
 
           <div className="login-footer">
-            <p>Don't have an account? <button type="button" className="link-button" onClick={() => alert('Signup page coming soon')}>Sign Up</button></p>
-            <p><button type="button" className="link-button" onClick={() => alert('Password reset coming soon')}>Forgot Password?</button></p>
+            <p>
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button type="button" className="link-button" onClick={toggleMode} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px' }}>
+                {isLogin ? 'Sign Up' : 'Sign In'}
+              </button>
+            </p>
+            {isLogin && <p><button type="button" className="link-button" onClick={() => alert('Password reset coming soon')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>Forgot Password?</button></p>}
           </div>
         </form>
       </div>
 
       <div className="login-benefits">
-        <h3>Why Login?</h3>
+        <h3>{isLogin ? 'Why Login?' : 'Why Join Us?'}</h3>
         <ul>
           <li>Track your orders in real-time</li>
           <li>Access exclusive deals and offers</li>
