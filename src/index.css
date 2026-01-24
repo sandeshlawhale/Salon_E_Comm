@@ -1,10 +1,19 @@
 :root {
-  --primary-color: #0f172a;
-  --secondary-color: #334155;
-  --accent-color: #3b82f6;
-  --text-color: #e2e8f0;
-  --bg-color: #020617;
-  --font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --primary-color: #0066cc;
+  --primary-dark: #0052a3;
+  --primary-light: #0080ff;
+  --secondary-color: #00a8cc;
+  --accent-color: #ff6b35;
+  --success-color: #06a77d;
+  --text-primary: #1a1a2e;
+  --text-secondary: #555555;
+  --text-light: #888888;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f7fa;
+  --bg-tertiary: #e8ecf1;
+  --border-color: #d0d7e0;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Inter", "Outfit", sans-serif;
+  --font-secondary: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
@@ -13,12 +22,17 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  line-height: 1.5;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -28,6 +42,33 @@ a {
 
 button {
   cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-color) 100%);
+}
   border: none;
   outline: none;
   font-family: inherit;
