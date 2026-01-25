@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCart } from '../../context/CartContext';
+import { getAuthToken, removeAuthToken } from '../../utils/apiClient';
 import './Header.css';
 
 export default function Header() {
   const navigate = useNavigate();
+  const { getCartTotal } = useCart();
+  const { totalItems } = getCartTotal();
   const [searchValue, setSearchValue] = useState('');
-  const [cartCount] = useState(3);
+  const isLoggedIn = !!getAuthToken();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -19,12 +23,32 @@ export default function Header() {
     navigate('/login');
   };
 
+  const handleLogout = () => {
+    removeAuthToken();
+    localStorage.removeItem('user');
+    alert('Logged out successfully');
+    navigate('/');
+  };
+
+  const handleSignup = () => {
+    navigate('/signup');
+  };
+
   const handleBecomeAgent = () => {
-    navigate('/login');
+    if (!isLoggedIn) {
+      navigate('/signup');
+    } else {
+      navigate('/become-seller');
+    }
   };
 
   const handleCart = () => {
-    navigate('/checkout');
+    if (!isLoggedIn) {
+      alert('Please login to view your cart');
+      navigate('/login');
+    } else {
+      navigate('/cart');
+    }
   };
 
   const handleHome = () => {
@@ -44,7 +68,7 @@ export default function Header() {
             <div className="header-top-links">
               <button className="header-link" onClick={handleBecomeAgent}>Become a Seller</button>
               <span className="separator">|</span>
-              <button className="header-link" onClick={() => alert('Help Center - Contact us at support@salonpro.com')}>Help Center</button>
+              <button className="header-link" onClick={() => navigate('/help')}>Help Center</button>
             </div>
           </div>
         </div>
@@ -70,11 +94,20 @@ export default function Header() {
             </form>
 
             <div className="header-actions">
-              <button className="btn-login" onClick={handleLogin}>Login</button>
-              <button className="btn-primary" onClick={handleBecomeAgent}>Become an Agent</button>
+              {!isLoggedIn ? (
+                <>
+                  <button className="btn-login" onClick={handleLogin}>Login</button>
+                  <button className="btn-signup" onClick={handleSignup}>Sign Up</button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-login" onClick={() => navigate('/my-orders')}>📦 My Orders</button>
+                  <button className="btn-login" onClick={handleLogout}>Logout</button>
+                </>
+              )}
               <button className="cart-icon" onClick={handleCart}>
                 🛒
-                <span className="cart-count">{cartCount}</span>
+                {totalItems > 0 && <span className="cart-count">{totalItems}</span>}
               </button>
               <button className="btn-menu">☰</button>
             </div>

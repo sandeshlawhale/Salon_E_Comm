@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { orderAPI, getAuthToken } from '../utils/apiClient';
+import { useCart } from '../context/CartContext';
 import './CheckoutPage.css';
 
 export default function CheckoutPage() {
@@ -6,17 +9,23 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [agentId, setAgentId] = useState('');
   const [agentVerified, setAgentVerified] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { items: cartItems, getCartTotal, clearCart } = useCart();
+  const { totalPrice } = getCartTotal();
 
-  const cartItems = [
-    { name: 'Professional Argan Oil 100ml', quantity: 2, price: 4200, image: 'https://images.unsplash.com/photo-1585110396000-c9ffd4d4b35c?w=100&h=100&fit=crop' },
-    { name: 'Deep Hydration Mask 500ml', quantity: 1, price: 6850, image: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=100&h=100&fit=crop' }
+  // Use cart items or mock data as fallback
+  const displayItems = cartItems && cartItems.length > 0 ? cartItems : [
+    { productName: 'Professional Argan Oil 100ml', quantity: 2, price: 4200, productImage: 'https://images.unsplash.com/photo-1585110396000-c9ffd4d4b35c?w=100&h=100&fit=crop' },
+    { productName: 'Deep Hydration Mask 500ml', quantity: 1, price: 6850, productImage: 'https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=100&h=100&fit=crop' }
   ];
 
-  const subtotal = 11050;
-  const discount = -1105;
-  const tax = 1790;
+  const subtotal = totalPrice || 11050;
+  const discount = -Math.round(subtotal * 0.10); // 10% discount
+  const tax = Math.round(subtotal * 0.18); // 18% tax
   const shipping = 0;
-  const total = 11735;
+  const total = subtotal + discount + tax + shipping;
 
   const handleVerifyAgent = () => {
     if (agentId) {
@@ -27,8 +36,60 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePlaceOrder = () => {
-    alert('Order placed successfully! Your order has been confirmed.');
+  const handlePlaceOrder = async () => {
+    if (!getAuthToken()) {
+      alert('Please login to place an order');
+      navigate('/login');
+      return;
+    }
+
+    if (displayItems.length === 0) {
+      alert('Your cart is empty. Please add items before placing an order.');
+      navigate('/');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const orderData = {
+        items: displayItems.map(item => ({
+          name: item.productName || item.name,
+          quantity: item.quantity,
+          price: item.price,
+          productId: item.productId
+        })),
+        subtotal,
+        discount,
+        tax,
+        shipping,
+        total,
+        paymentMethod,
+        shippingMethod,
+        agentId: agentVerified ? agentId : null,
+        status: 'PENDING'
+      };
+
+      const response = await orderAPI.create(orderData);
+      
+      // Clear cart after successful order
+      try {
+        await clearCart();
+        console.log('Cart cleared after order placement');
+      } catch (clearErr) {
+        console.warn('Failed to clear cart:', clearErr);
+      }
+      
+      alert('Order placed successfully! Your order has been confirmed.');
+      // Navigate to my orders or home
+      setTimeout(() => navigate('/my-orders'), 2000);
+    } catch (err) {
+      setError(err.message || 'Failed to place order. Please try again.');
+      console.error('Order placement error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -145,11 +206,9 @@ export default function CheckoutPage() {
                       name="payment"
                       checked={paymentMethod === 'cod'}
                       onChange={() => setPaymentMethod('cod')}
-                      disabled
                     />
                     <span className="payment-icon">📦</span>
                     <span className="payment-text">Cash on Delivery</span>
-                    <span className="unavailable">Not available for B2B</span>
                   </label>
                 </div>
               </div>
@@ -165,17 +224,17 @@ export default function CheckoutPage() {
             <div className="order-summary">
               <div className="summary-card">
                 <h3>Order Summary</h3>
-                <span className="item-count">{cartItems.length} items</span>
+                <span className="item-count">{displayItems.length} items</span>
 
                 <div className="items-list">
-                  {cartItems.map((item, idx) => (
+                  {displayItems.map((item, idx) => (
                     <div key={idx} className="summary-item">
-                      <img src={item.image} alt={item.name} />
+                      <img src={item.productImage || item.image} alt={item.productName || item.name} />
                       <div className="item-details">
-                        <p className="item-name">{item.name}</p>
-                        <p className="item-qty">Qty: {item.quantity} x {Math.round(item.price / item.quantity)}</p>
+                        <p className="item-name">{item.productName || item.name}</p>
+                        <p className="item-qty">Qty: {item.quantity} x ₹{Math.round(item.price / item.quantity)}</p>
                       </div>
-                      <span className="item-price">₹{item.price.toLocaleString()}</span>
+                      <span className="item-price">₹{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -216,12 +275,14 @@ export default function CheckoutPage() {
                   <span>Pro Tip: Add 8 more items to unlock "Wholesale" discount of 5%</span>
                 </div>
 
+                {error && <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>{error}</div>}
+                
                 <button 
                   className="btn-place-order" 
                   onClick={handlePlaceOrder}
-                  disabled={!agentVerified && agentId === ''}
+                  disabled={loading || (!agentVerified && agentId === '')}
                 >
-                  PLACE ORDER NOW
+                  {loading ? 'Processing...' : 'PLACE ORDER NOW'}
                 </button>
 
                 <div className="security-note">

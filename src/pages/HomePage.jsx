@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProductCard from '../components/common/ProductCard';
 import CategoryCard from '../components/common/CategoryCard';
+import { productAPI } from '../utils/apiClient';
 import productsData from '../data/products.json';
 import categoriesData from '../data/categories.json';
 import dealsData from '../data/deals.json';
@@ -12,13 +13,50 @@ export default function HomePage() {
   const [deals, setDeals] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 22, seconds: 19 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
+  // Fetch products from API
   useEffect(() => {
-    // Simulate fetching data from files
-    setProducts(productsData.products);
-    setCategories(categoriesData.categories);
-    setDeals(dealsData.dealsOfTheDay);
-    setTrendingProducts(productsData.products.slice(6, 12));
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        console.log('[HomePage] Fetching products from API...');
+        // Try to fetch from API
+        const apiProducts = await productAPI.getAll({ status: 'ACTIVE' });
+        
+        console.log('[HomePage] API returned:', apiProducts);
+        
+        if (Array.isArray(apiProducts) && apiProducts.length > 0) {
+          console.log('[HomePage] Using API products - count:', apiProducts.length);
+          console.log('[HomePage] Sample product:', {
+            _id: apiProducts[0]._id,
+            name: apiProducts[0].name,
+            id: apiProducts[0].id
+          });
+          setProducts(apiProducts);
+          setTrendingProducts(apiProducts.slice(0, 6));
+        } else {
+          console.warn('[HomePage] API returned empty/invalid data, using mock data');
+          setProducts(productsData.products);
+          setTrendingProducts(productsData.products.slice(6, 12));
+        }
+      } catch (err) {
+        console.error('[HomePage] Failed to fetch from API:', err.message);
+        console.warn('[HomePage] Using mock data as fallback');
+        // Fallback to mock data if API fails
+        setProducts(productsData.products);
+        setTrendingProducts(productsData.products.slice(6, 12));
+      }
+
+      // Load categories and deals from mock data (these might come from API later)
+      setCategories(categoriesData.categories);
+      setDeals(dealsData.dealsOfTheDay);
+      setLoading(false);
+    };
+
+    fetchProducts();
   }, []);
 
   useEffect(() => {
@@ -127,7 +165,7 @@ export default function HomePage() {
           <h2 className="section-title">Trending in Salon Supplies</h2>
           <div className="products-grid">
             {trendingProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product._id || product.id} product={product} />
             ))}
           </div>
         </div>

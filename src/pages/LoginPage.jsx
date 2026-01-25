@@ -1,26 +1,48 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authAPI } from '../utils/apiClient';
 import './LoginPage.css';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState('customer');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email && password) {
-      alert(`Login successful as ${userType}!`);
-      if (userType === 'admin') {
+    setError('');
+    
+    if (!email || !password) {
+      setError('Please fill all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await authAPI.login(email, password);
+      
+      // Store user data if needed
+      if (response.user) {
+        localStorage.setItem('user', JSON.stringify(response.user));
+      }
+
+      // Navigate based on user role
+      const role = response.user?.role?.toUpperCase() || userType.toUpperCase();
+      if (role === 'ADMIN') {
         navigate('/admin');
-      } else if (userType === 'agent') {
+      } else if (role === 'AGENT') {
         navigate('/agent-dashboard');
       } else {
         navigate('/');
       }
-    } else {
-      alert('Please fill all fields');
+    } catch (err) {
+      setError(err.message || 'Login failed. Please try again.');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,16 +113,20 @@ export default function LoginPage() {
               />
             </div>
 
+            {error && <div className="error-message">{error}</div>}
+
             <div className="form-group">
               <label className="checkbox-label">
                 <input type="checkbox" /> Remember me
               </label>
             </div>
 
-            <button type="submit" className="btn-login-submit">Sign In</button>
+            <button type="submit" className="btn-login-submit" disabled={loading}>
+              {loading ? 'Signing In...' : 'Sign In'}
+            </button>
 
             <div className="login-footer">
-              <p>Don't have an account? <button type="button" className="link-button" onClick={() => alert('Signup page coming soon')}>Sign Up</button></p>
+              <p>Don't have an account? <button type="button" className="link-button" onClick={() => navigate('/signup')}>Sign Up</button></p>
               <p><button type="button" className="link-button" onClick={() => alert('Password reset coming soon')}>Forgot Password?</button></p>
             </div>
           </form>

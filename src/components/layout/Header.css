@@ -160,6 +160,25 @@
   color: white;
 }
 
+.btn-signup {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  margin-left: 8px;
+}
+
+.btn-signup:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}
+
 .btn-primary {
   padding: 8px 16px;
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);

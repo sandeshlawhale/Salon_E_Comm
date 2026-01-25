@@ -1,102 +1,199 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { productAPI, getAuthToken } from "../utils/apiClient";
+import { useCart } from "../context/CartContext";
 import "./ProductDetailPage.css";
 import productsData from "../data/products.json";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   const [quantity, setQuantity] = useState(1);
   const [selectedBulk, setSelectedBulk] = useState(null);
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [addingToCart, setAddingToCart] = useState(false);
 
-  // Load product
+  // Load product from API
   useEffect(() => {
-    const productId = Number(id);
-    const foundProduct = productsData?.products?.find(
-      (p) => p.id === productId
-    );
+    const fetchProduct = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        console.log('[ProductDetailPage] Fetching product with ID:', id);
+        
+        // Try to fetch from API first
+        const apiProduct = await productAPI.getById(id);
+        
+        console.log('[ProductDetailPage] API returned:', apiProduct);
+        
+        if (apiProduct) {
+          setProduct({
+            ...apiProduct,
+            description: apiProduct.description || `Premium ${apiProduct.name} for professional use`,
+            ingredients: apiProduct.ingredients || [
+              "Premium ingredients",
+              "Professional grade",
+              "Long-lasting formula",
+            ],
+            technicalSpecs: apiProduct.technicalSpecs || [
+              "Professional quality",
+              "High performance",
+              "Best in class",
+            ],
+            bulkOptions: apiProduct.bulkOptions || [
+              {
+                units: "10 - 49 Units",
+                price: Math.floor(apiProduct.price * 0.95),
+                discount: "5% OFF",
+              },
+              {
+                units: "50 - 99 Units",
+                price: Math.floor(apiProduct.price * 0.85),
+                discount: "15% OFF",
+              },
+              {
+                units: "100+ Units",
+                price: Math.floor(apiProduct.price * 0.75),
+                discount: "Contact for Quote",
+              },
+            ],
+            reviews_data: apiProduct.reviews_data || [
+              {
+                author: "Professional User",
+                title: "VERIFIED BUYER",
+                rating: 5,
+                date: new Date().toLocaleDateString(),
+                content: "Excellent product quality and service. Highly recommended!",
+                verified: true,
+              },
+            ],
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch from API, using mock data:', err.message);
+        // Fallback to mock data
+        const productId = Number(id);
+        const foundProduct = productsData?.products?.find((p) => p.id === productId);
 
-    if (foundProduct) {
-      setProduct({
-        ...foundProduct,
-        description:
-          foundProduct.description ||
-          `Premium ${foundProduct.name} for professional use`,
-        ingredients:
-          foundProduct.ingredients || [
-            "Premium ingredients",
-            "Professional grade",
-            "Long-lasting formula",
-          ],
-        technicalSpecs:
-          foundProduct.technicalSpecs || [
-            "Professional quality",
-            "High performance",
-            "Best in class",
-          ],
-        bulkOptions:
-          foundProduct.bulkOptions || [
-            {
-              units: "10 - 49 Units",
-              price: Math.floor(foundProduct.price * 0.95),
-              discount: "5% OFF",
-            },
-            {
-              units: "50 - 99 Units",
-              price: Math.floor(foundProduct.price * 0.85),
-              discount: "15% OFF",
-            },
-            {
-              units: "100+ Units",
-              price: Math.floor(foundProduct.price * 0.75),
-              discount: "Contact for Quote",
-            },
-          ],
-        reviews_data:
-          foundProduct.reviews_data || [
-            {
-              author: "Professional User",
-              title: "VERIFIED BUYER",
-              rating: 5,
-              date: new Date().toLocaleDateString(),
-              content:
-                "Excellent product quality and service. Highly recommended!",
-              verified: true,
-            },
-          ],
-      });
-    } else {
-      setProduct({
-        id: 0,
-        name: "Product Not Found",
-        category: "Unknown",
-        brand: "Unknown",
-        price: 0,
-        originalPrice: 0,
-        rating: 0,
-        reviews: 0,
-        badge: "N/A",
-        image: "https://via.placeholder.com/600x600?text=Product+Not+Found",
-        description: "The product you're looking for could not be found.",
-        ingredients: [],
-        technicalSpecs: [],
-        bulkOptions: [],
-        reviews_data: [],
-      });
-    }
+        if (foundProduct) {
+          setProduct({
+            ...foundProduct,
+            description: foundProduct.description || `Premium ${foundProduct.name} for professional use`,
+            ingredients: foundProduct.ingredients || [
+              "Premium ingredients",
+              "Professional grade",
+              "Long-lasting formula",
+            ],
+            technicalSpecs: foundProduct.technicalSpecs || [
+              "Professional quality",
+              "High performance",
+              "Best in class",
+            ],
+            bulkOptions: foundProduct.bulkOptions || [
+              {
+                units: "10 - 49 Units",
+                price: Math.floor(foundProduct.price * 0.95),
+                discount: "5% OFF",
+              },
+              {
+                units: "50 - 99 Units",
+                price: Math.floor(foundProduct.price * 0.85),
+                discount: "15% OFF",
+              },
+              {
+                units: "100+ Units",
+                price: Math.floor(foundProduct.price * 0.75),
+                discount: "Contact for Quote",
+              },
+            ],
+            reviews_data: foundProduct.reviews_data || [
+              {
+                author: "Professional User",
+                title: "VERIFIED BUYER",
+                rating: 5,
+                date: new Date().toLocaleDateString(),
+                content: "Excellent product quality and service. Highly recommended!",
+                verified: true,
+              },
+            ],
+          });
+        } else {
+          setProduct({
+            id: 0,
+            name: "Product Not Found",
+            category: "Unknown",
+            brand: "Unknown",
+            price: 0,
+            originalPrice: 0,
+            rating: 0,
+            reviews: 0,
+            badge: "N/A",
+            image: "https://via.placeholder.com/600x600?text=Product+Not+Found",
+            description: "The product you're looking for could not be found.",
+            ingredients: [],
+            technicalSpecs: [],
+            bulkOptions: [],
+            reviews_data: [],
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
   }, [id]);
 
-  const handleAddToCart = () => {
-    alert(`Added ${quantity} × ${product.name} to cart`);
+  const handleAddToCart = async () => {
+    if (!getAuthToken()) {
+      alert('Please login to add items to cart');
+      navigate('/login');
+      return;
+    }
+
+    if (!product) {
+      alert('Product not found');
+      return;
+    }
+
+    // Use _id from API, fallback to id from mock data
+    const productId = product._id || product.id?.toString();
+    
+    if (!productId) {
+      alert('Product ID is missing');
+      return;
+    }
+
+    console.log('Adding to cart:', { productId, quantity, product: product.name });
+
+    setAddingToCart(true);
+    try {
+      const result = await addToCart(productId, quantity);
+      console.log('Add to cart result:', result);
+      alert(`✓ Added ${quantity} × ${product.name} to your cart!`);
+      setQuantity(1);
+    } catch (err) {
+      console.error('Add to cart failed:', err);
+      alert(`Failed to add to cart: ${err.message}`);
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   const handleBuyNow = () => {
     alert(`Proceeding to checkout with ${quantity} item(s)`);
   };
 
-  if (!product) {
-    return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
+  if (loading) {
+    return <h2 style={{ textAlign: "center", marginTop: "50px" }}>Loading...</h2>;
+  }
+
+  if (error) {
+    return <h2 style={{ textAlign: "center", color: "red", marginTop: "50px" }}>{error}</h2>;
   }
 
   return (
@@ -170,7 +267,13 @@ export default function ProductDetailPage() {
 
             {/* Action Buttons */}
             <div className="action-buttons">
-              <button onClick={handleAddToCart}>Add to Cart</button>
+              <button 
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                style={{opacity: addingToCart ? 0.6 : 1}}
+              >
+                {addingToCart ? 'Adding...' : 'Add to Cart'}
+              </button>
               <button onClick={handleBuyNow}>Buy Now</button>
             </div>
           </div>
