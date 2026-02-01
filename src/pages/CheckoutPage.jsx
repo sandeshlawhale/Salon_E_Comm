@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { orderAPI, getAuthToken } from '../utils/apiClient';
+import { orderAPI, getAuthToken, userAPI } from '../utils/apiClient';
 import { useCart } from '../context/CartContext';
 import './CheckoutPage.css';
 
@@ -8,9 +8,11 @@ export default function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState('default');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [agentId, setAgentId] = useState('');
+  const [agents, setAgents] = useState([]);
   const [agentVerified, setAgentVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [shippingAddress, setShippingAddress] = useState({ name: '', street: '', city: '', state: '', zip: '', phone: '' });
   const navigate = useNavigate();
   const { items: cartItems, getCartTotal, clearCart } = useCart();
   const { totalPrice } = getCartTotal();
@@ -27,13 +29,29 @@ export default function CheckoutPage() {
   const shipping = 0;
   const total = subtotal + discount + tax + shipping;
 
+  useEffect(() => {
+    // Fetch active agents for dropdown (public endpoint)
+    const fetchAgents = async () => {
+      try {
+        const list = await userAPI.getAgents();
+        setAgents(list || []);
+      } catch (err) {
+        console.warn('Failed to load agents', err);
+      }
+    };
+    fetchAgents();
+  }, []);
+
   const handleVerifyAgent = () => {
     if (agentId) {
-      alert(`Agent ${agentId} verified successfully!`);
-      setAgentVerified(true);
-    } else {
-      alert('Please enter Agent ID');
+      const selected = agents.find(a => a._id === agentId);
+      if (selected) {
+        alert(`Agent ${selected.firstName} ${selected.lastName} verified successfully!`);
+        setAgentVerified(true);
+        return;
+      }
     }
+    alert('Please select a valid Agent');
   };
 
   const handlePlaceOrder = async () => {
@@ -53,6 +71,13 @@ export default function CheckoutPage() {
     setError('');
 
     try {
+      // Basic validation for shipping address
+      if (!shippingAddress || !shippingAddress.street || !shippingAddress.city || !shippingAddress.zip) {
+        setError('Please fill the shipping address (street, city, zip)');
+        setLoading(false);
+        return;
+      }
+
       const orderData = {
         items: displayItems.map(item => ({
           name: item.productName || item.name,
@@ -65,9 +90,10 @@ export default function CheckoutPage() {
         tax,
         shipping,
         total,
+        shippingAddress,
         paymentMethod,
         shippingMethod,
-        agentId: agentVerified ? agentId : null,
+        agentId: agentId || null,
         status: 'PENDING'
       };
 
@@ -108,33 +134,19 @@ export default function CheckoutPage() {
                 <div className="section-header">
                   <span className="section-number">1</span>
                   <h2>Shipping Address</h2>
-                  <button className="add-btn">Add Now</button>
                 </div>
 
-                <div className="address-card selected">
-                  <div className="radio-select">
-                    <input type="radio" checked readOnly />
+                <div className="shipping-form">
+                  <input type="text" placeholder="Recipient name" value={shippingAddress.name || ''} onChange={e => setShippingAddress(s => ({ ...s, name: e.target.value }))} />
+                  <input type="text" placeholder="Street address" value={shippingAddress.street || ''} onChange={e => setShippingAddress(s => ({ ...s, street: e.target.value }))} />
+                  <div className="form-row">
+                    <input type="text" placeholder="City" value={shippingAddress.city || ''} onChange={e => setShippingAddress(s => ({ ...s, city: e.target.value }))} />
+                    <input type="text" placeholder="State" value={shippingAddress.state || ''} onChange={e => setShippingAddress(s => ({ ...s, state: e.target.value }))} />
                   </div>
-                  <div className="address-content">
-                    <h4>The Royal Groom Salon - Corporate</h4>
-                    <p className="gst">GSTIN: 29AAAA0000A1Z5</p>
-                    <p className="address-text">245, Bridgate Road, Ashok Nagar, Bangalore, KA 560025</p>
-                    <p className="phone">Ph: +91 98765 43210</p>
+                  <div className="form-row">
+                    <input type="text" placeholder="ZIP / PIN" value={shippingAddress.zip || ''} onChange={e => setShippingAddress(s => ({ ...s, zip: e.target.value }))} />
+                    <input type="tel" placeholder="Phone" value={shippingAddress.phone || ''} onChange={e => setShippingAddress(s => ({ ...s, phone: e.target.value }))} />
                   </div>
-                  <button className="edit-btn">✎</button>
-                </div>
-
-                <div className="address-card">
-                  <div className="radio-select">
-                    <input type="radio" />
-                  </div>
-                  <div className="address-content">
-                    <h4>Elite Salon Supplies - Warehouse</h4>
-                    <p className="gst">GSTIN: 29BBBBB0000B1Z5</p>
-                    <p className="address-text">Sector 4, HSR Layout, Bangalore, KA 560102</p>
-                    <p className="phone">Ph: +91 98765 43211</p>
-                  </div>
-                  <button className="edit-btn">✎</button>
                 </div>
               </div>
 
@@ -150,22 +162,21 @@ export default function CheckoutPage() {
                 </p>
 
                 <div className="agent-input-group">
-                  <input
-                    type="text"
-                    placeholder="Enter Agent ID (e.g., AGT-1029)"
-                    value={agentId}
-                    onChange={(e) => setAgentId(e.target.value)}
-                    className="agent-input"
-                  />
-                  <button className="verify-btn" onClick={handleVerifyAgent}>Verify Agent</button>
+                  <select value={agentId} onChange={(e) => { setAgentId(e.target.value); setAgentVerified(false); }} className="agent-input">
+                    <option value="">— Select Agent (optional) —</option>
+                    {agents.map(a => (
+                      <option key={a._id} value={a._id}>{a.firstName} {a.lastName} — {a.email}</option>
+                    ))}
+                  </select>
+                  <button className="verify-btn" onClick={handleVerifyAgent} disabled={!agentId}>Verify</button>
                 </div>
 
                 {agentVerified && (
                   <div className="agent-verified">
                     <span className="check">✓</span>
-                    <span className="verified-text">Agent Verified: Rajesh Kumar</span>
-                    <span className="tier">Elite Professional Club • Commission Tier [1.5%]</span>
-                    <button className="change-btn">Change</button>
+                    <span className="verified-text">Agent Verified: {agents.find(a => a._id === agentId)?.firstName || ''} {agents.find(a => a._id === agentId)?.lastName || ''}</span>
+                    <span className="tier">Commission Tier • {agents.find(a => a._id === agentId)?.agentProfile?.commissionRate || 0}%</span>
+                    <button className="change-btn" onClick={() => { setAgentId(''); setAgentVerified(false); }}>Change</button>
                   </div>
                 )}
               </div>

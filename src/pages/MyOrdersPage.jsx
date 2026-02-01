@@ -24,7 +24,8 @@ export default function MyOrdersPage() {
       setLoading(true);
       const response = await orderAPI.getMyOrders();
       console.log('📦 Orders fetched:', response);
-      setOrders(response);
+      const ordersList = response && response.value ? response.value : (response || []);
+      setOrders(ordersList);
       setError('');
     } catch (err) {
       console.error('Error fetching orders:', err);

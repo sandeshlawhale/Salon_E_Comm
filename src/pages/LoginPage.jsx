@@ -24,13 +24,11 @@ export default function LoginPage() {
     try {
       const response = await authAPI.login(email, password);
       
-      // Store user data if needed
-      if (response.user) {
-        localStorage.setItem('user', JSON.stringify(response.user));
-      }
+      // Store user data and token
+      localStorage.setItem('user', JSON.stringify(response));
 
-      // Navigate based on user role
-      const role = response.user?.role?.toUpperCase() || userType.toUpperCase();
+      // Navigate based on user role from backend (fallback to selector)
+      const role = response.role?.toUpperCase() || userType.toUpperCase();
       if (role === 'ADMIN') {
         navigate('/admin');
       } else if (role === 'AGENT') {

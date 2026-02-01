@@ -1,76 +1,118 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AgentDashboard.css';
+import { authAPI, orderAPI, userAPI, commissionAPI } from '../utils/apiClient';
 
 const AgentDashboard = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('orders');
+  const [agentData, setAgentData] = useState({
+    name: '',
+    tier: 'Bronze',
+    totalEarnings: 0,
+    monthlyEarnings: 0,
+    totalOrders: 0,
+    monthlyOrders: 0,
+    commissionRate: '0%',
+    activeReferrals: 0,
+    pendingCommission: 0
+  });
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalOrders, setTotalOrders] = useState(0);
 
-  // Sample agent data
-  const agentData = {
-    name: 'Rahul Arora',
-    tier: 'Gold',
-    totalEarnings: '₹ 42,500',
-    monthlyEarnings: '₹ 8,200',
-    totalOrders: 245,
-    monthlyOrders: 42,
-    commissionRate: '8.5%',
-    activeReferrals: 18,
-    pendingCommission: '₹ 3,400'
-  };
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const [meRes, myOrdersRes, myCommissions] = await Promise.all([
+          authAPI.getMe(),
+          orderAPI.getAssigned({ page, limit }),
+          commissionAPI.getMy()
+        ]);
 
-  const monthlyChartData = [
-    { month: 'Jan', earnings: 5200 },
-    { month: 'Feb', earnings: 6100 },
-    { month: 'Mar', earnings: 7400 },
-    { month: 'Apr', earnings: 6800 },
-    { month: 'May', earnings: 8200 },
-    { month: 'Jun', earnings: 8200 }
-  ];
+        // Redirect if not an agent
+        if (!meRes || meRes.role !== 'AGENT') {
+          if (meRes && meRes.role === 'ADMIN') {
+            window.location.href = '/admin';
+            return;
+          }
+          window.location.href = '/login';
+          return;
+        }
 
-  const recentOrders = [
-    {
-      id: 'ORD-2024-001',
-      customer: 'Priya Singh',
-      product: 'Moisturizer 50ml',
-      commission: '₹ 250',
-      date: '2024-01-15',
-      status: 'COMPLETED'
-    },
-    {
-      id: 'ORD-2024-002',
-      customer: 'Anjali Sharma',
-      product: 'Hair Oil 200ml',
-      commission: '₹ 180',
-      date: '2024-01-14',
-      status: 'COMPLETED'
-    },
-    {
-      id: 'ORD-2024-003',
-      customer: 'Neha Patel',
-      product: 'Face Wash 100ml',
-      commission: '₹ 185',
-      date: '2024-01-14',
-      status: 'PENDING'
-    },
-    {
-      id: 'ORD-2024-004',
-      customer: 'Deepika Kumar',
-      product: 'Serum 30ml',
-      commission: '₹ 200',
-      date: '2024-01-13',
-      status: 'COMPLETED'
+        const myOrders = (myOrdersRes && myOrdersRes.value) ? myOrdersRes.value : (myOrdersRes || []);
+        const count = myOrdersRes && myOrdersRes.Count ? myOrdersRes.Count : myOrders.length;
+
+        setRecentOrders(myOrders || []);
+        setTotalOrders(count);
+
+        // Calculate earnings
+        const totalEarnings = (myCommissions || []).reduce((s, c) => s + (c.amountEarned || 0), 0);
+        const monthlyEarnings = (myCommissions || []).filter(c => new Date(c.createdAt) >= new Date(new Date().setDate(new Date().getDate()-30))).reduce((s, c) => s + (c.amountEarned || 0), 0);
+
+        setAgentData(prev => ({
+          ...prev,
+          id: meRes._id,
+          name: `${meRes.firstName || ''} ${meRes.lastName || ''}`.trim() || meRes.email,
+          email: meRes.email,
+          phone: meRes.phone || prev.phone,
+          referralCode: meRes.agentProfile?.referralCode || null,
+          tier: meRes.agentProfile?.tier || prev.tier,
+          totalEarnings,
+          monthlyEarnings,
+          totalOrders: count,
+          monthlyOrders: myOrders.filter(o => new Date(o.createdAt) >= new Date(new Date().setDate(new Date().getDate()-30))).length,
+          commissionRate: `${(meRes.agentProfile?.commissionRate || 0) * 100}%`,
+          activeReferrals: meRes.agentProfile?.activeReferrals || 0,
+          pendingCommission: (myCommissions || []).filter(c => c.status === 'PENDING').reduce((s, c) => s + (c.amountEarned||0), 0),
+          points: meRes.agentProfile?.points || 0
+        }));
+      } catch (err) {
+        console.error('Failed loading agent dashboard data', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+
+    const interval = setInterval(loadData, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [page, limit]);
+
+
+  // Chart data computed from orders (last 6 months)
+  const chartData = (() => {
+    const res = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const dt = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthLabel = dt.toLocaleString('default', { month: 'short' });
+      const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+      const monthEnd = new Date(dt.getFullYear(), dt.getMonth() + 1, 1);
+      const sum = (recentOrders || []).reduce((s, o) => {
+        const d = new Date(o.createdAt);
+        return s + ((d >= monthStart && d < monthEnd) ? (o.total || 0) : 0);
+      }, 0);
+      res.push({ month: monthLabel, earnings: sum });
     }
-  ];
+    return res;
+  })();
 
-  const referralLinks = [
-    { id: 1, code: 'RAHUL8520', clicks: 245, conversions: 18, revenue: '₹ 8,200' },
-    { id: 2, code: 'RA-GOLD-85', clicks: 156, conversions: 12, revenue: '₹ 5,400' }
-  ];
+  const thisMonthEarnings = chartData[chartData.length - 1]?.earnings ?? 0;
+  const totalRevenue = (recentOrders || []).reduce((s, o) => s + (o.total || 0), 0);
+  const totalOrdersCount = (recentOrders || []).length;
+  const paidOrders = (recentOrders || []).filter(o => (o.paymentStatus === 'PAID' || o.status === 'DELIVERED' || o.status === 'COMPLETED')).length;
+  const conversionRate = totalOrdersCount ? ((paidOrders / totalOrdersCount) * 100).toFixed(1) + '%' : '0%';
+  const avgOrderValue = totalOrdersCount ? Math.round(totalRevenue / totalOrdersCount) : 0;
 
   const performanceMetrics = [
-    { label: 'This Month', value: '₹ 8,200', change: '+12%', positive: true },
-    { label: 'Conversion Rate', value: '7.3%', change: '+0.5%', positive: true },
-    { label: 'Avg Order Value', value: '₹ 1,850', change: '-2%', positive: false }
+    { label: 'This Month', value: `₹ ${thisMonthEarnings}`, change: '', positive: true },
+    { label: 'Conversion Rate', value: `${conversionRate}`, change: '', positive: true },
+    { label: 'Avg Order Value', value: `₹ ${avgOrderValue}`, change: '', positive: avgOrderValue > 0 }
   ];
+
 
   return (
     <div className="agent-dashboard">
@@ -96,6 +138,15 @@ const AgentDashboard = () => {
             </div>
             <div className="stat-value">{agentData.totalEarnings}</div>
             <div className="stat-subtitle">Lifetime</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-header">
+              <span className="stat-label">Points</span>
+              <span className="stat-icon">⭐</span>
+            </div>
+            <div className="stat-value">{agentData.points}</div>
+            <div className="stat-subtitle">Reward Points</div>
           </div>
 
           <div className="stat-card">
@@ -126,34 +177,8 @@ const AgentDashboard = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="tabs-container">
-          <div className="tabs">
-            <button
-              className={`tab-button ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboard')}
-            >
-              Dashboard
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'orders' ? 'active' : ''}`}
-              onClick={() => setActiveTab('orders')}
-            >
-              Recent Orders
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'referrals' ? 'active' : ''}`}
-              onClick={() => setActiveTab('referrals')}
-            >
-              Referral Links
-            </button>
-            <button
-              className={`tab-button ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              Account Settings
-            </button>
-          </div>
+        <div className="orders-title">
+          <h2>Recent Orders</h2>
         </div>
 
         {/* Tab Content */}
@@ -166,16 +191,19 @@ const AgentDashboard = () => {
                   <h3>Monthly Earnings Trend</h3>
                   <div className="simple-chart">
                     <div className="chart-bars">
-                      {monthlyChartData.map((item, idx) => (
-                        <div key={idx} className="bar-container">
-                          <div
-                            className="bar"
-                            style={{ height: `${(item.earnings / 8500) * 100}%` }}
-                            title={`₹${item.earnings}`}
-                          ></div>
-                          <span className="bar-label">{item.month}</span>
-                        </div>
-                      ))}
+                      {(() => {
+                        const max = Math.max(...chartData.map(c => c.earnings), 1);
+                        return chartData.map((item, idx) => (
+                          <div key={idx} className="bar-container">
+                            <div
+                              className="bar"
+                              style={{ height: `${(item.earnings / max) * 100}%` }}
+                              title={`₹${item.earnings}`}
+                            ></div>
+                            <span className="bar-label">{item.month}</span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -220,58 +248,55 @@ const AgentDashboard = () => {
             </div>
           )}
 
-          {/* Orders Tab */}
-          {activeTab === 'orders' && (
             <div className="orders-content">
               <div className="orders-table">
                 <div className="table-header">
                   <div className="col-id">Order ID</div>
-                  <div className="col-customer">Customer</div>
-                  <div className="col-product">Product</div>
-                  <div className="col-commission">Commission</div>
+                  <div className="col-product">Product(s)</div>
+                  <div className="col-total">Total</div>
                   <div className="col-date">Date</div>
                   <div className="col-status">Status</div>
                 </div>
-                {recentOrders.map((order) => (
-                  <div key={order.id} className="table-row">
-                    <div className="col-id">{order.id}</div>
-                    <div className="col-customer">{order.customer}</div>
-                    <div className="col-product">{order.product}</div>
-                    <div className="col-commission">{order.commission}</div>
-                    <div className="col-date">{order.date}</div>
-                    <div className="col-status">
-                      <span className={`status-badge status-${order.status.toLowerCase()}`}>
-                        {order.status}
-                      </span>
+                {(recentOrders || []).map((order) => {
+                  const products = (order.items || []).map(i => i.name).join(', ');
+                  return (
+                    <div key={order._id || order.orderNumber} className="table-row">
+                      <div className="col-id">{order.orderNumber || (order._id)}</div>
+                      <div className="col-product">{products}</div>
+                      <div className="col-total">₹{order.total || 0}</div>
+                      <div className="col-date">{new Date(order.createdAt).toLocaleDateString()}</div>
+                      <div className="col-status">
+                        <span className={`status-badge status-${(order.status || '').toLowerCase()}`}>
+                          {order.status}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          )}
 
           {/* Referrals Tab */}
           {activeTab === 'referrals' && (
             <div className="referrals-content">
               <div className="referral-header">
-                <h3>Your Referral Links</h3>
-                <button className="create-link-btn">+ Create New Link</button>
+                <h3>Your Referral</h3>
               </div>
 
-              <div className="referral-cards">
-                {referralLinks.map((link) => (
-                  <div key={link.id} className="referral-card">
+              {agentData.referralCode ? (
+                <div className="referral-cards">
+                  <div className="referral-card">
                     <div className="link-code">
                       <span className="code-label">Referral Code</span>
                       <div className="code-display">
                         <input
                           type="text"
-                          value={link.code}
+                          value={agentData.referralCode}
                           readOnly
                           className="code-input"
                         />
                         <button className="copy-btn" onClick={() => {
-                          navigator.clipboard.writeText(link.code);
+                          navigator.clipboard.writeText(agentData.referralCode);
                           alert('Copied to clipboard!');
                         }}>
                           Copy
@@ -281,20 +306,42 @@ const AgentDashboard = () => {
 
                     <div className="link-stats">
                       <div className="stat">
-                        <span className="stat-name">Clicks</span>
-                        <span className="stat-num">{link.clicks}</span>
+                        <span className="stat-name">Total Commissions</span>
+                        <span className="stat-num">₹{(commissions || []).reduce((s, c) => s + (c.amountEarned || 0), 0)}</span>
                       </div>
                       <div className="stat">
-                        <span className="stat-name">Conversions</span>
-                        <span className="stat-num">{link.conversions}</span>
-                      </div>
-                      <div className="stat">
-                        <span className="stat-name">Revenue</span>
-                        <span className="stat-num">{link.revenue}</span>
+                        <span className="stat-name">Pending</span>
+                        <span className="stat-num">₹{(commissions || []).filter(c => c.status === 'PENDING').reduce((s, c) => s + (c.amountEarned || 0), 0)}</span>
                       </div>
                     </div>
 
                     <button className="details-btn">View Details</button>
+                  </div>
+                </div>
+              ) : (
+                <p>No referral code assigned yet.</p>
+              )}
+            </div>
+          )}
+
+          {/* Users Tab */}
+          {activeTab === 'users' && (
+            <div className="users-content">
+              <h3>All Users</h3>
+              <div className="users-table">
+                <div className="table-header">
+                  <div className="col-name">Name</div>
+                  <div className="col-email">Email</div>
+                  <div className="col-role">Role</div>
+                  <div className="col-status">Status</div>
+                </div>
+                {users.length === 0 && <div className="table-row"><div style={{padding: '12px'}}>No users found</div></div>}
+                {users.map((u) => (
+                  <div key={u._id} className="table-row">
+                    <div className="col-name">{u.firstName} {u.lastName}</div>
+                    <div className="col-email">{u.email}</div>
+                    <div className="col-role">{u.role}</div>
+                    <div className="col-status">{u.isActive ? 'Active' : 'Inactive'}</div>
                   </div>
                 ))}
               </div>
@@ -312,17 +359,17 @@ const AgentDashboard = () => {
 
                 <div className="form-group">
                   <label>Agent ID</label>
-                  <input type="text" defaultValue="AG-20240001" readOnly />
+                  <input type="text" defaultValue={agentData.id || '—'} readOnly />
                 </div>
 
                 <div className="form-group">
                   <label>Email Address</label>
-                  <input type="email" defaultValue="rahul.arora@example.com" />
+                  <input type="email" defaultValue={agentData.email || ''} />
                 </div>
 
                 <div className="form-group">
                   <label>Phone Number</label>
-                  <input type="tel" defaultValue="+91 98765 43210" />
+                  <input type="tel" defaultValue={agentData.phone || ''} />
                 </div>
 
                 <div className="form-group">

@@ -132,8 +132,25 @@ export const orderAPI = {
         return fetchAPI(endpoint, { method: 'GET' });
     },
 
-    getMyOrders: async () => {
-        return fetchAPI('/orders/me', { method: 'GET' });
+    // Support pagination by passing { page, limit }
+    getMyOrders: async (filters = {}) => {
+        const queryParams = new URLSearchParams(filters).toString();
+        const endpoint = `/orders/me${queryParams ? '?' + queryParams : ''}`;
+        return fetchAPI(endpoint, { method: 'GET' });
+    },
+
+    // For agents: get orders assigned to me
+    getAssigned: async (filters = {}) => {
+        const queryParams = new URLSearchParams(filters).toString();
+        const endpoint = `/orders/assigned${queryParams ? '?' + queryParams : ''}`;
+        return fetchAPI(endpoint, { method: 'GET' });
+    },
+
+    assignAgent: async (orderId, agentId) => {
+        return fetchAPI(`/orders/${orderId}/assign-agent`, {
+            method: 'PATCH',
+            body: JSON.stringify({ agentId })
+        });
     },
 
     getById: async (orderId) => {
@@ -153,6 +170,13 @@ export const orderAPI = {
             body: JSON.stringify(orderData),
         });
     },
+
+    updateStatus: async (orderId, status) => {
+        return fetchAPI(`/orders/${orderId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status }),
+        });
+    },
 };
 
 // Commission API calls
@@ -165,6 +189,11 @@ export const commissionAPI = {
 
     getById: async (commissionId) => {
         return fetchAPI(`/commissions/${commissionId}`, { method: 'GET' });
+    },
+
+    // Agent: Get my commissions
+    getMy: async () => {
+        return fetchAPI('/commissions/me', { method: 'GET' });
     },
 
     create: async (commissionData) => {
@@ -180,6 +209,32 @@ export const commissionAPI = {
             body: JSON.stringify(commissionData),
         });
     },
+};
+
+// User API
+export const userAPI = {
+    getAll: async (filters = {}) => {
+        const queryParams = new URLSearchParams(filters).toString();
+        const endpoint = `/users${queryParams ? '?' + queryParams : ''}`;
+        return fetchAPI(endpoint, { method: 'GET' });
+    },
+
+    // Public: get active agents (no auth required)
+    getAgents: async () => {
+        return fetchAPI('/users/agents', { method: 'GET' });
+    },
+
+    getById: async (userId) => {
+        return fetchAPI(`/users/${userId}`, { method: 'GET' });
+    },
+
+    // Create a user (admin-initiated). Uses the register endpoint but DOES NOT set local auth token.
+    create: async (userData) => {
+        return fetchAPI('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(userData),
+        });
+    }
 };
 
 // Cart API calls
