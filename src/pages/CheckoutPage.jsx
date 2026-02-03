@@ -129,8 +129,10 @@ export default function CheckoutPage() {
           receipt: `receipt_${internalOrderId}`
         });
 
+        console.log("api key ===>>> ", import.meta.env.VITE_RAZORPAY_KEY_ID)
+
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SBZYkGtAZQOKHX',
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: rzpOrder.amount,
           currency: rzpOrder.currency,
           name: 'SalonPro E-Commerce',
