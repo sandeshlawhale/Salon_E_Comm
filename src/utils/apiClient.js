@@ -19,7 +19,7 @@ export const removeAuthToken = () => {
 // Generic fetch wrapper with error handling
 const fetchAPI = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -267,5 +267,22 @@ export const cartAPI = {
 
     getCartTotal: async () => {
         return fetchAPI('/cart/total', { method: 'GET' });
+    },
+};
+
+// Payment API calls
+export const paymentAPI = {
+    createRazorpayOrder: async (paymentData) => {
+        return fetchAPI('/payments/create-order', {
+            method: 'POST',
+            body: JSON.stringify(paymentData),
+        });
+    },
+
+    verifyPayment: async (verificationData) => {
+        return fetchAPI('/payments/verify', {
+            method: 'POST',
+            body: JSON.stringify(verificationData),
+        });
     },
 };

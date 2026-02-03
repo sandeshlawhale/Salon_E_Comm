@@ -14,6 +14,8 @@ import CartPage from './pages/CartPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import MainLayout from './components/layout/MainLayout';
 import { CartProvider } from './context/CartContext';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const App = () => {
   return (
@@ -40,6 +42,7 @@ const App = () => {
           <Route path="/agent-dashboard" element={<AgentDashboard />} />
         </Routes>
       </BrowserRouter>
+      <ToastContainer position="top-right" autoClose={3000} />
     </CartProvider>
   );
 };

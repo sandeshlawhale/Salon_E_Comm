@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { getAuthToken } from '../utils/apiClient';
+import { toast } from 'react-toastify';
 import './CartPage.css';
 
 export default function CartPage() {
@@ -41,18 +42,18 @@ export default function CartPage() {
     try {
       await removeFromCart(productId);
     } catch (err) {
-      alert(`Error removing item: ${err.message}`);
+      toast.error(`Error removing item: ${err.message}`);
     }
   };
 
   const handleQuantityChange = async (productId, newQuantity) => {
     if (newQuantity < 1) return;
-    
+
     setUpdatingId(productId);
     try {
       await updateCartItem(productId, newQuantity);
     } catch (err) {
-      alert(`Error updating quantity: ${err.message}`);
+      toast.error(`Error updating quantity: ${err.message}`);
     } finally {
       setUpdatingId(null);
     }
