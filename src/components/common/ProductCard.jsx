@@ -9,14 +9,14 @@ export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  
-  const discount = product.originalPrice 
+
+  const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
   const handleAddCart = async (e) => {
     e.stopPropagation();
-    
+
     if (!getAuthToken()) {
       alert('Please login to add items to cart');
       navigate('/login');
@@ -24,7 +24,7 @@ export default function ProductCard({ product }) {
     }
 
     let productId = product._id || product.id;
-    
+
     if (!productId) {
       alert('Product ID is missing');
       return;
@@ -62,7 +62,7 @@ export default function ProductCard({ product }) {
   return (
     <div className="product-card" key={product._id || product.id}>
       <div className="product-image-wrapper" onClick={handleProductClick}>
-        <img src={product.image} alt={product.name} className="product-image" />
+        <img src={product.images[0]} alt={product.name} className="product-image" />
         {product.badge && (
           <div className="product-badge">{product.badge}</div>
         )}
@@ -73,11 +73,11 @@ export default function ProductCard({ product }) {
           {isWishlisted ? '♥' : '♡'}
         </button>
       </div>
-      
+
       <div className="product-info">
         <p className="product-category">{product.category}</p>
         <h3 className="product-name" onClick={handleProductClick}>{product.name}</h3>
-        
+
         <div className="product-rating">
           <span className="stars">★★★★★</span>
           <span className="rating-value">{product.rating}</span>

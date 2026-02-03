@@ -68,17 +68,16 @@
 }
 
 .hero-image {
-  padding: 0 16px;
   overflow: hidden;
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); */
 }
 
 .hero-image img {
   width: 100%;
-  height: 100%;
+  height: 400px;
+  object-fit: cover;
   border-radius: 12px;
-  display: block;
 }
 
 /* Categories Section */

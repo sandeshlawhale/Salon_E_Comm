@@ -25,9 +25,9 @@ export default function HomePage() {
         console.log('[HomePage] Fetching products from API...');
         // Try to fetch from API
         const apiProducts = await productAPI.getAll({ status: 'ACTIVE' });
-        
+
         console.log('[HomePage] API returned:', apiProducts);
-        
+
         if (Array.isArray(apiProducts) && apiProducts.length > 0) {
           console.log('[HomePage] Using API products - count:', apiProducts.length);
           console.log('[HomePage] Sample product:', {
@@ -105,9 +105,9 @@ export default function HomePage() {
           <button className="btn-hero" onClick={handleShopRange}>SHOP THE RANGE</button>
         </div>
         <div className="hero-image">
-          <img 
-            src="https://images.unsplash.com/photo-1585110396000-c9ffd4d4b35c?w=600&h=400&fit=crop" 
-            alt="Salon Products" 
+          <img
+            src="https://images.unsplash.com/photo-1586880244406-556ebe35f282?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            alt="Salon Products"
           />
         </div>
       </section>
